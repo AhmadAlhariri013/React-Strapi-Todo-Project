@@ -1,0 +1,108 @@
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import { useForm, SubmitHandler } from "react-hook-form";
+import InputErrorMessage from "../components/InputErrorMessage";
+import { REGISTER_FORM } from "../data";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { registerSchema } from "../validation";
+import axiosInstance from "../config/axios.config";
+import toast from "react-hot-toast";
+import { useState } from "react";
+import { AxiosError } from "axios";
+import { IErrorResponse } from "../interfaces";
+import { useNavigate } from "react-router-dom";
+interface IFormInput {
+  username: string;
+  email: string;
+  password: string;
+}
+
+const RegisterPage = () => {
+  // ****** States******
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<IFormInput>({
+    resolver: yupResolver(registerSchema),
+  });
+
+  // ****** Handlers ******
+  const onSubmit: SubmitHandler<IFormInput> = async (data) => {
+    setIsLoading(true);
+
+    try {
+      const { status } = await axiosInstance.post("/auth/local/register", data);
+
+      if (status == 200) {
+        toast.success(
+          "You will navigate to the login page after 2 seconds to login!.",
+          {
+            position: "top-right",
+            duration: 1500,
+            style: {
+              backgroundColor: "black",
+              color: "white",
+              width: "fit-content",
+            },
+          }
+        );
+
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      }
+    } catch (error) {
+      const errorObj = error as AxiosError<IErrorResponse>;
+      const errorMsg = errorObj.response?.data.error.message;
+
+      toast.error(`${errorMsg}`, {
+        style: {
+          border: "1px solid #713200",
+          padding: "16px",
+          color: "#713200",
+        },
+        iconTheme: {
+          primary: "#713200",
+          secondary: "#FFFAEE",
+        },
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ****** Renders ******
+  const renderRegisterForm = REGISTER_FORM.map(
+    ({ name, placeholder, type, validation }, indx) => {
+      return (
+        <div key={indx}>
+          <Input
+            placeholder={placeholder}
+            type={type}
+            {...register(name, validation)}
+          />
+          {errors[name] && <InputErrorMessage msg={errors[name]?.message} />}
+        </div>
+      );
+    }
+  );
+  return (
+    <div className="max-w-md mx-auto">
+      <h2 className="text-center mb-4 text-3xl font-semibold">
+        Register to get access!
+      </h2>
+      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        {renderRegisterForm}
+
+        <Button fullWidth isLoading={isLoading}>
+          Register
+        </Button>
+      </form>
+    </div>
+  );
+};
+
+export default RegisterPage;
